@@ -1,8 +1,8 @@
 import 'package:bcrypt/bcrypt.dart';
 import 'package:uuid/uuid.dart';
+import 'package:worldofgoals/src/core/database/repositories/user_repository.dart';
+import 'package:worldofgoals/src/core/database/services/database_service.dart';
 import '../domain/auth_provider.dart';
-import '../../core/database/repositories/user_repository.dart';
-import '../../core/database/services/database_service.dart';
 import 'secure_storage_service.dart';
 import 'session_manager.dart';
 
