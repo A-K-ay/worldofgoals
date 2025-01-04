@@ -1,0 +1,44 @@
+{
+    "rules": {
+        "guidelines": [
+            "Follow Flutter best practices and Material Design guidelines",
+            "Use proper state management patterns",
+            "Implement error handling for all async operations",
+            "Write clear documentation for public APIs",
+            "Follow the repository pattern for data access",
+            "Add Proper comments to the code"
+        ],
+        "fileTypes": {
+            "*.dart": {
+                "guidelines": [
+                    "Use named parameters for widgets with more than 2 parameters",
+                    "Keep widget methods small and focused",
+                    "Implement proper dispose methods for controllers and streams"
+                ]
+            },
+            "test/*.dart": {
+                "guidelines": [
+                    "Write descriptive test names",
+                    "Follow the Arrange-Act-Assert pattern",
+                    "Mock external dependencies"
+                ]
+            }
+        },
+        "directories": {
+            "lib/src/features": {
+                "guidelines": [
+                    "Follow feature-first architecture",
+                    "Keep features independent and self-contained",
+                    "Include separate data, domain, and presentation layers"
+                ]
+            },
+            "lib/src/core": {
+                "guidelines": [
+                    "Keep core utilities generic and reusable",
+                    "Avoid business logic in core components",
+                    "Document all shared utilities thoroughly"
+                ]
+            }
+        }
+    }
+}
