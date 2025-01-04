@@ -14,7 +14,7 @@ part 'database.g.dart';
 /// Main database class for the application
 @DriftDatabase(tables: [Users, Tasks, Rewards, Achievements])
 class AppDatabase extends _$AppDatabase {
-  AppDatabase() : super(_openConnection());
+  AppDatabase(NativeDatabase nativeDatabase) : super(nativeDatabase);
 
   @override
   int get schemaVersion => 1;

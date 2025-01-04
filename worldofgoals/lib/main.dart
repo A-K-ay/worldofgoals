@@ -1,15 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:worldofgoals/src/core/config/app_config.dart';
-import 'package:worldofgoals/src/core/theme/app_theme.dart';
-import 'package:worldofgoals/src/core/database/database.dart';
 import 'package:worldofgoals/src/core/utils/app_utils.dart';
 import 'src/app.dart';
+import 'package:sqlite3_flutter_libs/sqlite3_flutter_libs.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // Initialize database
-  final database = AppDatabase();
+  // Initialize SQLite
+  await applyWorkaroundToOpenSqlite3OnOldAndroidVersions();
   
   AppUtils.logger.i('Starting ${AppConfig.appName} v${AppConfig.appVersion}');
   

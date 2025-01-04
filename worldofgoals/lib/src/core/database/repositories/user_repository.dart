@@ -1,74 +1,111 @@
 import 'package:drift/drift.dart';
-import '../dao/user_dao.dart';
+
 import '../database.dart';
-import 'base_repository.dart';
 import '../services/database_service.dart';
+import '../tables/users_table.dart';
+import 'base_repository.dart';
+import '../../utils/app_utils.dart';
 
 /// Repository implementation for User-related operations
 class UserRepository implements BaseRepository<User> {
-  late final UserDao _userDao;
   final DatabaseService _databaseService;
 
-  UserRepository(this._databaseService) {
-    _initDao();
-  }
-
-  Future<void> _initDao() async {
-    final db = await _databaseService.database;
-    _userDao = UserDao(db);
-  }
+  UserRepository(this._databaseService);
 
   @override
-  Future<void> create(User user) async {
-    await _userDao.createUser(
-      UsersCompanion(
-        id: Value(user.id),
-        username: Value(user.username),
-        email: Value(user.email),
-        passwordHash: Value(user.passwordHash),
-        xp: Value(user.xp),
-        level: Value(user.level),
-      ),
-    );
+  Future<void> create(dynamic user) async {
+    try {
+      AppUtils.logger.i('Creating user: ${user.email}');
+      final db = await _databaseService.database;
+      if (user is UsersCompanion) {
+        await db.into(db.users).insert(user);
+      } else {
+        throw ArgumentError('Invalid user type. Expected UsersCompanion');
+      }
+      AppUtils.logger.i('User created successfully');
+    } catch (e, stackTrace) {
+      AppUtils.logger.e('Error creating user', error: e, stackTrace: stackTrace);
+      rethrow;
+    }
   }
 
   @override
   Future<User?> read(String id) async {
-    return _userDao.getUserById(id);
+    try {
+      AppUtils.logger.i('Reading user: $id');
+      final db = await _databaseService.database;
+      return await (db.select(db.users)..where((u) => u.id.equals(id)))
+          .getSingleOrNull();
+    } catch (e, stackTrace) {
+      AppUtils.logger.e('Error reading user', error: e, stackTrace: stackTrace);
+      rethrow;
+    }
   }
 
   @override
   Future<bool> update(User user) async {
-    return _userDao.updateUser(
-      UsersCompanion(
-        id: Value(user.id),
-        username: Value(user.username),
-        email: Value(user.email),
-        passwordHash: Value(user.passwordHash),
-        xp: Value(user.xp),
-        level: Value(user.level),
-        updatedAt: Value(DateTime.now()),
-      ),
-    );
+    try {
+      AppUtils.logger.i('Updating user: ${user.id}');
+      final db = await _databaseService.database;
+      return await db.update(db.users).replace(user);
+    } catch (e, stackTrace) {
+      AppUtils.logger.e('Error updating user', error: e, stackTrace: stackTrace);
+      rethrow;
+    }
   }
 
   @override
   Future<bool> delete(String id) async {
-    return await _userDao.deleteUser(id) > 0;
+    try {
+      AppUtils.logger.i('Deleting user: $id');
+      final db = await _databaseService.database;
+      return await (db.delete(db.users)..where((u) => u.id.equals(id))).go() > 0;
+    } catch (e, stackTrace) {
+      AppUtils.logger.e('Error deleting user', error: e, stackTrace: stackTrace);
+      rethrow;
+    }
   }
 
   @override
   Future<List<User>> getAll() async {
-    return _userDao.getAllUsers();
+    try {
+      AppUtils.logger.i('Getting all users');
+      final db = await _databaseService.database;
+      return await db.select(db.users).get();
+    } catch (e, stackTrace) {
+      AppUtils.logger.e('Error getting all users', error: e, stackTrace: stackTrace);
+      rethrow;
+    }
   }
 
   /// Get user by email
   Future<User?> getUserByEmail(String email) async {
-    return _userDao.getUserByEmail(email);
+    try {
+      AppUtils.logger.i('Getting user by email: $email');
+      final db = await _databaseService.database;
+      return await (db.select(db.users)..where((u) => u.email.equals(email)))
+          .getSingleOrNull();
+    } catch (e, stackTrace) {
+      AppUtils.logger.e('Error getting user by email', error: e, stackTrace: stackTrace);
+      rethrow;
+    }
   }
 
   /// Update user's progress
   Future<bool> updateUserProgress(String id, int xp, int level) async {
-    return _userDao.updateUserProgress(id, xp, level);
+    try {
+      AppUtils.logger.i('Updating user progress: $id');
+      final db = await _databaseService.database;
+      return await db.update(db.users)
+          .replace(UsersCompanion(
+            id: Value(id),
+            xp: Value(xp),
+            level: Value(level),
+            updatedAt: Value(DateTime.now()),
+          ));
+    } catch (e, stackTrace) {
+      AppUtils.logger.e('Error updating user progress', error: e, stackTrace: stackTrace);
+      rethrow;
+    }
   }
 }

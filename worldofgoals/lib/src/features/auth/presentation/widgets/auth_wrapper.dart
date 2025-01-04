@@ -1,58 +1,52 @@
 import 'package:flutter/material.dart';
 import '../../services/local_auth_provider.dart';
 import '../screens/login_screen.dart';
+import '../../../../features/home/presentation/screens/home_screen.dart';
+import '../../../../core/utils/app_utils.dart';
 
-class AuthWrapper extends StatefulWidget {
-  final Widget child;
-
-  const AuthWrapper({
-    super.key,
-    required this.child,
-  });
-
-  @override
-  State<AuthWrapper> createState() => _AuthWrapperState();
-}
-
-class _AuthWrapperState extends State<AuthWrapper> {
-  final _authProvider = LocalAuthProvider();
-  bool _isLoading = true;
-  bool _isAuthenticated = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _checkAuthStatus();
-  }
-
-  Future<void> _checkAuthStatus() async {
-    final isSignedIn = await _authProvider.isSignedIn();
-    if (mounted) {
-      setState(() {
-        _isAuthenticated = isSignedIn;
-        _isLoading = false;
-      });
-    }
-  }
+class AuthWrapper extends StatelessWidget {
+  const AuthWrapper({super.key});
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const MaterialApp(
-        home: Scaffold(
-          body: Center(
-            child: CircularProgressIndicator(),
-          ),
-        ),
-      );
-    }
+    return FutureBuilder<bool>(
+      future: LocalAuthProvider().isAuthenticated(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(
+              child: CircularProgressIndicator(),
+            ),
+          );
+        }
 
-    if (!_isAuthenticated) {
-      return const MaterialApp(
-        home: LoginScreen(),
-      );
-    }
+        if (snapshot.hasError) {
+          AppUtils.logger.e('Auth check failed', error: snapshot.error);
+          return const LoginScreen();
+        }
 
-    return widget.child;
+        final isAuthenticated = snapshot.data ?? false;
+        
+        if (isAuthenticated) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            Navigator.pushReplacementNamed(context, '/home');
+          });
+          return const Scaffold(
+            body: Center(
+              child: CircularProgressIndicator(),
+            ),
+          );
+        } else {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            Navigator.pushReplacementNamed(context, '/login');
+          });
+          return const Scaffold(
+            body: Center(
+              child: CircularProgressIndicator(),
+            ),
+          );
+        }
+      },
+    );
   }
 }

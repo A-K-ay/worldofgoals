@@ -1,26 +1,29 @@
 import 'package:bcrypt/bcrypt.dart';
+import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
-import 'package:worldofgoals/src/core/database/database.dart';
-import 'package:worldofgoals/src/core/database/repositories/user_repository.dart';
-import 'package:worldofgoals/src/core/database/services/database_service.dart';
-import '../domain/auth_provider.dart';
-import 'secure_storage_service.dart';
-import 'session_manager.dart';
+import 'package:worldofgoals/src/features/auth/domain/auth_provider.dart';
+import 'package:worldofgoals/src/features/auth/services/session_manager.dart';
+import 'package:worldofgoals/src/features/auth/services/secure_storage_service.dart';
+import '../../../core/database/database.dart';
+import '../../../core/database/repositories/user_repository.dart';
+import '../../../core/database/services/database_service.dart';
+import '../../../core/utils/app_utils.dart';
 
-/// Local authentication provider implementation
 class LocalAuthProvider implements AuthProvider {
-  final UserRepository _userRepository;
-  final SecureStorageService _secureStorage;
-  final SessionManager _sessionManager;
-  static final _uuid = Uuid();
+  static final LocalAuthProvider _instance = LocalAuthProvider._internal();
+  final _uuid = const Uuid();
+  late final UserRepository _userRepository;
+  final _sessionManager = SessionManager();
+  final _secureStorage = SecureStorageService();
+  final _databaseService = DatabaseService();
 
-  LocalAuthProvider({
-    UserRepository? userRepository,
-    SecureStorageService? secureStorage,
-    SessionManager? sessionManager,
-  })  : _userRepository = userRepository ?? UserRepository(DatabaseService()),
-        _secureStorage = secureStorage ?? SecureStorageService(),
-        _sessionManager = sessionManager ?? SessionManager();
+  factory LocalAuthProvider() {
+    return _instance;
+  }
+
+  LocalAuthProvider._internal() {
+    _userRepository = UserRepository(_databaseService);
+  }
 
   @override
   Future<AuthResult> register({
@@ -29,12 +32,15 @@ class LocalAuthProvider implements AuthProvider {
     required String username,
   }) async {
     try {
-      // Check if user already exists
+      AppUtils.logger.i('Attempting to register user: $email');
+
+      // Check if user exists
       final existingUser = await _userRepository.getUserByEmail(email);
       if (existingUser != null) {
+        AppUtils.logger.w('User already exists: $email');
         return AuthResult(
           userId: '',
-          error: 'User already exists with this email',
+          error: 'A user with this email already exists',
         );
       }
 
@@ -44,24 +50,32 @@ class LocalAuthProvider implements AuthProvider {
 
       // Create user
       final userId = _uuid.v4();
-      await _userRepository.create(User(
+      final user = UsersCompanion.insert(
         id: userId,
         username: username,
         email: email,
         passwordHash: hashedPassword,
-        xp: 0,
-        level: 1,
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-      ));
+        xp: const Value(0),
+        level: const Value(1),
+        createdAt: Value(DateTime.now()),
+        updatedAt: Value(DateTime.now()),
+      );
+
+      await _userRepository.create(user);
 
       // Create session
       final token = await _sessionManager.createSession(userId);
       await _secureStorage.setSessionToken(token);
 
+      AppUtils.logger.i('User registered successfully: $userId');
       return AuthResult(userId: userId, token: token);
-    } catch (e) {
-      return AuthResult(userId: '', error: e.toString());
+    } catch (e, stackTrace) {
+      AppUtils.logger.e(
+        'Registration failed',
+        error: e,
+        stackTrace: stackTrace,
+      );
+      return AuthResult(userId: '', error: 'Registration failed: ${e.toString()}');
     }
   }
 
@@ -71,47 +85,99 @@ class LocalAuthProvider implements AuthProvider {
     required String password,
   }) async {
     try {
+      AppUtils.logger.i('Attempting to sign in user: $email');
+
       final user = await _userRepository.getUserByEmail(email);
       if (user == null) {
-        return AuthResult(userId: '', error: 'User not found');
+        AppUtils.logger.w('User not found: $email');
+        return AuthResult(userId: '', error: 'Invalid email or password');
       }
 
       final passwordMatch = BCrypt.checkpw(password, user.passwordHash);
       if (!passwordMatch) {
-        return AuthResult(userId: '', error: 'Invalid password');
+        AppUtils.logger.w('Invalid password for user: $email');
+        return AuthResult(userId: '', error: 'Invalid email or password');
       }
 
       // Create session
       final token = await _sessionManager.createSession(user.id);
       await _secureStorage.setSessionToken(token);
 
+      AppUtils.logger.i('User signed in successfully: ${user.id}');
       return AuthResult(userId: user.id, token: token);
-    } catch (e) {
-      return AuthResult(userId: '', error: e.toString());
-    }
-  }
-
-  @override
-  Future<void> signOut() async {
-    final token = await _secureStorage.getSessionToken();
-    if (token != null) {
-      await _sessionManager.removeSession(token);
-      await _secureStorage.removeSessionToken();
+    } catch (e, stackTrace) {
+      AppUtils.logger.e(
+        'Sign in failed',
+        error: e,
+        stackTrace: stackTrace,
+      );
+      return AuthResult(userId: '', error: 'Sign in failed: ${e.toString()}');
     }
   }
 
   @override
   Future<bool> isSignedIn() async {
-    final token = await _secureStorage.getSessionToken();
-    if (token == null) return false;
-    return _sessionManager.isValidSession(token);
+    return isAuthenticated();
+  }
+
+  Future<bool> isAuthenticated() async {
+    try {
+      final token = await _secureStorage.getSessionToken();
+      if (token == null || token.isEmpty) return false;
+
+      final userId = await _sessionManager.getUserIdFromToken(token);
+      if (userId == null) {
+        await _secureStorage.removeSessionToken();
+        return false;
+      }
+
+      final user = await _userRepository.read(userId);
+      return user != null;
+    } catch (e, stackTrace) {
+      AppUtils.logger.e(
+        'Failed to check authentication status',
+        error: e,
+        stackTrace: stackTrace,
+      );
+      return false;
+    }
+  }
+
+  @override
+  Future<void> signOut() async {
+    try {
+      AppUtils.logger.i('Signing out user');
+      final token = await _secureStorage.getSessionToken();
+      if (token != null) {
+        await _sessionManager.removeSession(token);
+      }
+      await _secureStorage.removeSessionToken();
+      AppUtils.logger.i('User signed out successfully');
+    } catch (e, stackTrace) {
+      AppUtils.logger.e(
+        'Sign out failed',
+        error: e,
+        stackTrace: stackTrace,
+      );
+      rethrow;
+    }
   }
 
   @override
   Future<String?> getCurrentUserId() async {
-    final token = await _secureStorage.getSessionToken();
-    if (token == null) return null;
-    return _sessionManager.getUserIdFromToken(token);
+    try {
+      final token = await _secureStorage.getSessionToken();
+      if (token == null || token.isEmpty) return null;
+
+      return _sessionManager.getUserIdFromToken(token);
+    } catch (e, stackTrace) {
+      AppUtils.logger.e(
+        'Failed to get current user ID',
+        error: e,
+        stackTrace: stackTrace,
+      );
+      return null;
+    }
   }
 
   @override
@@ -120,27 +186,44 @@ class LocalAuthProvider implements AuthProvider {
     required String newPassword,
   }) async {
     try {
+      AppUtils.logger.i('Attempting to change password');
       final userId = await getCurrentUserId();
-      if (userId == null) return false;
+      if (userId == null) {
+        AppUtils.logger.w('No current user found');
+        return false;
+      }
 
       final user = await _userRepository.read(userId);
-      if (user == null) return false;
+      if (user == null) {
+        AppUtils.logger.w('User not found: $userId');
+        return false;
+      }
 
       final passwordMatch = BCrypt.checkpw(currentPassword, user.passwordHash);
-      if (!passwordMatch) return false;
+      if (!passwordMatch) {
+        AppUtils.logger.w('Invalid current password');
+        return false;
+      }
 
       // Hash new password
       final salt = BCrypt.gensalt();
       final hashedPassword = BCrypt.hashpw(newPassword, salt);
 
       // Update user
-      await _userRepository.update(user.copyWith(
+      final updatedUser = user.copyWith(
         passwordHash: hashedPassword,
         updatedAt: DateTime.now(),
-      ));
+      );
 
+      await _userRepository.update(updatedUser);
+      AppUtils.logger.i('Password changed successfully');
       return true;
-    } catch (e) {
+    } catch (e, stackTrace) {
+      AppUtils.logger.e(
+        'Failed to change password',
+        error: e,
+        stackTrace: stackTrace,
+      );
       return false;
     }
   }
