@@ -1,25 +1,37 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:goalquest/core/theme/app_theme.dart';
-import 'package:goalquest/core/routes/app_router.dart';
+import 'package:worldofgoals/src/core/config/app_config.dart';
+import 'package:worldofgoals/src/core/theme/app_theme.dart';
+import 'package:worldofgoals/src/core/database/database.dart';
+import 'package:worldofgoals/src/core/utils/app_utils.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const GoalQuestApp());
+  
+  // Initialize database
+  final database = AppDatabase();
+  
+  AppUtils.logger.i('Starting ${AppConfig.appName} v${AppConfig.appVersion}');
+  
+  runApp(MyApp(database: database));
 }
 
-class GoalQuestApp extends StatelessWidget {
-  const GoalQuestApp({super.key});
+class MyApp extends StatelessWidget {
+  final AppDatabase database;
+
+  const MyApp({super.key, required this.database});
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp.router(
-      title: 'GoalQuest',
+    return MaterialApp(
+      title: AppConfig.appName,
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: ThemeMode.system,
-      routerConfig: AppRouter.router,
-      debugShowCheckedModeBanner: false,
+      home: const Scaffold(
+        body: Center(
+          child: Text('Welcome to GoalQuest'),
+        ),
+      ),
     );
   }
 }
