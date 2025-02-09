@@ -66,17 +66,17 @@
 ## In Progress Features 
 
 ### 1. Task Management
-- [ ] Task creation screen
-  - [ ] Title and description inputs
-  - [ ] Due date picker
-  - [ ] Difficulty selector
-  - [ ] Category selector
-- [ ] Task list view
-- [ ] Task completion tracking
-- [ ] Task categories
-- [ ] Task repository implementation
-- [ ] Task filtering and sorting
-- [ ] Task notifications
+- [x] Task creation screen
+  - [ x] Title and description inputs
+  - [ x] Due date picker
+  - [ x] Difficulty selector
+  - [ x] Category selector
+- [x ] Task list view
+- [x ] Task completion tracking
+- [x] Task categories
+- [x] Task repository implementation
+- [x] Task filtering and sorting
+- [x] Task notifications
 
 ### 2. Gamification System
 - [ ] XP system implementation

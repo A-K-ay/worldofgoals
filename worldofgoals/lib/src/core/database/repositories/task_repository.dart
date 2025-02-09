@@ -10,11 +10,9 @@ class TaskRepository implements BaseRepository<Task> {
   late final TaskDao _taskDao;
   final DatabaseService _databaseService;
 
-  TaskRepository(this._databaseService) {
-    _initDao();
-  }
+  TaskRepository(this._databaseService);
 
-  Future<void> _initDao() async {
+  Future<void> initDao() async {
     final db = await _databaseService.database;
     _taskDao = TaskDao(db);
   }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../auth/services/local_auth_provider.dart';
+import '../../../tasks/presentation/screens/task_list_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   final _authProvider = LocalAuthProvider();
@@ -23,12 +24,7 @@ class HomeScreen extends StatelessWidget {
           ),
         ],
       ),
-      body: const Center(
-        child: Text(
-          'Welcome to World of Goals!',
-          style: TextStyle(fontSize: 24),
-        ),
-      ),
+      body: const TaskList(), // Replace welcome message with TaskListScreen
     );
   }
 }
